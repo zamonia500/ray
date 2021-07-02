@@ -273,12 +273,16 @@ void GcsActorScheduler::HandleWorkerLeaseGrantedReply(
     auto maybe_spill_back_node = gcs_node_manager_.GetAliveNode(spill_back_node_id);
     if (maybe_spill_back_node.has_value()) {
       auto spill_back_node = maybe_spill_back_node.value();
+      RAY_LOG(INFO) << "Didn't get a lease for " << actor->GetActorID()
+                    << ". Spilling back to " << spill_back_node_id;
       actor->UpdateAddress(retry_at_raylet_address);
       RAY_CHECK(node_to_actors_when_leasing_[actor->GetNodeID()]
                     .emplace(actor->GetActorID())
                     .second);
       LeaseWorkerFromNode(actor, spill_back_node);
     } else {
+      RAY_LOG(INFO) << "Didn't get a lease on for " << actor->GetActorID()
+                    << ".Rescheduling...";
       // If the spill back node is dead, we need to schedule again.
       actor->UpdateAddress(rpc::Address());
       actor->GetMutableActorTableData()->clear_resource_mapping();
@@ -297,6 +301,8 @@ void GcsActorScheduler::HandleWorkerLeaseGrantedReply(
     RAY_CHECK(node_to_workers_when_creating_[node_id]
                   .emplace(leased_worker->GetWorkerID(), leased_worker)
                   .second);
+    RAY_LOG(INFO) << "Successfully acquired lease on " << node_id << " for "
+                  << actor->GetActorID();
     actor->UpdateAddress(leased_worker->GetAddress());
     actor->GetMutableActorTableData()->set_pid(reply.worker_pid());
     // Make sure to connect to the client before persisting actor info to GCS.
