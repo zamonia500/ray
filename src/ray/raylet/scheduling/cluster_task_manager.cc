@@ -85,6 +85,8 @@ bool ClusterTaskManager::SchedulePendingTasks() {
       } else {
         // Should spill over to a different node.
         NodeID node_id = NodeID::FromBinary(node_id_string);
+        RAY_LOG(ERROR) << "Spilling task with id: "
+                       << task.GetTaskSpecification().TaskId() << " to node: " << node_id;
         Spillback(node_id, work);
       }
       work_it = work_queue.erase(work_it);
@@ -210,6 +212,7 @@ void ClusterTaskManager::DispatchScheduledTasksToWorkers(
           spec.GetRequiredResources().GetResourceMap(), allocated_instances);
 
       if (!schedulable) {
+        RAY_LOG(INFO) << "Dispatch queue task was not schedulable: " << spec.TaskId();
         ReleaseTaskArgs(task_id);
         // The local node currently does not have the resources to run the task, so we
         // should try spilling to another node.
@@ -225,8 +228,8 @@ void ClusterTaskManager::DispatchScheduledTasksToWorkers(
         // it.
         std::shared_ptr<WorkerInterface> worker = worker_pool_.PopWorker(spec);
         if (!worker) {
-          RAY_LOG(DEBUG) << "This node has available resources, but no worker processes "
-                            "to grant the lease.";
+          RAY_LOG(INFO) << "This node has available resources, but no worker processes "
+                           "to grant the lease.";
           // We've already acquired resources so we need to release them to avoid
           // double-acquiring when the next invocation of this function tries to schedule
           // this task.
@@ -284,8 +287,7 @@ bool ClusterTaskManager::TrySpillback(const Work &work, bool &is_infeasible) {
 void ClusterTaskManager::QueueAndScheduleTask(
     const Task &task, rpc::RequestWorkerLeaseReply *reply,
     rpc::SendReplyCallback send_reply_callback) {
-  RAY_LOG(DEBUG) << "Queuing and scheduling task "
-                 << task.GetTaskSpecification().TaskId();
+  RAY_LOG(INFO) << "Queuing task " << task.GetTaskSpecification().TaskId();
   metric_tasks_queued_++;
   Work work = std::make_tuple(task, reply, [send_reply_callback] {
     send_reply_callback(Status::OK(), nullptr, nullptr);
