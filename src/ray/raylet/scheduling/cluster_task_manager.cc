@@ -85,8 +85,9 @@ bool ClusterTaskManager::SchedulePendingTasks() {
       } else {
         // Should spill over to a different node.
         NodeID node_id = NodeID::FromBinary(node_id_string);
-        RAY_LOG(ERROR) << "Spilling task with id: "
-                       << task.GetTaskSpecification().TaskId() << " to node: " << node_id;
+        // RAY_LOG(ERROR) << "Spilling task with id: "
+        //                << task.GetTaskSpecification().TaskId() << " to node: " <<
+        //                node_id;
         Spillback(node_id, work);
       }
       work_it = work_queue.erase(work_it);
@@ -212,7 +213,7 @@ void ClusterTaskManager::DispatchScheduledTasksToWorkers(
           spec.GetRequiredResources().GetResourceMap(), allocated_instances);
 
       if (!schedulable) {
-        RAY_LOG(INFO) << "Dispatch queue task was not schedulable: " << spec.TaskId();
+        // RAY_LOG(INFO) << "Dispatch queue task was not schedulable: " << spec.TaskId();
         ReleaseTaskArgs(task_id);
         // The local node currently does not have the resources to run the task, so we
         // should try spilling to another node.

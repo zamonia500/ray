@@ -460,8 +460,18 @@ Status WorkerPool::RegisterWorker(const std::shared_ptr<WorkerInterface> &worker
   auto shim_process = Process::FromPid(worker_shim_pid);
   worker->SetShimProcess(shim_process);
   if (state.starting_worker_processes.count(shim_process) == 0) {
+    RAY_LOG(WARNING) << "=======================================";
     RAY_LOG(WARNING) << "Received a register request from an unknown worker shim process:"
                      << shim_process.GetId();
+    RAY_LOG(WARNING) << "There are " << state.starting_worker_processes.size()
+                     << " workers of type: " << worker->GetLanguage();
+    for (const auto &pair : state.starting_worker_processes) {
+      RAY_LOG(WARNING) << "\t" << pair.first.GetId() << ": " << pair.second.worker_type
+                       << ", " << pair.second.num_starting_workers << ", "
+                       << pair.second.num_workers;
+    }
+
+    RAY_LOG(WARNING) << "=======================================";
     Status status = Status::Invalid("Unknown worker");
     send_reply_callback(status, /*port=*/0);
     return status;
