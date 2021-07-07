@@ -176,7 +176,7 @@ RAY_CONFIG(int64_t, kill_worker_timeout_milliseconds, 100)
 
 /// The duration that we wait after the worker is launched before the
 /// starting_worker_timeout_callback() is called.
-RAY_CONFIG(int64_t, worker_register_timeout_seconds, 30)
+RAY_CONFIG(int64_t, worker_register_timeout_seconds, 120)
 
 /// Allow up to 5 seconds for connecting to Redis.
 RAY_CONFIG(int64_t, redis_db_connect_retries, 50)
