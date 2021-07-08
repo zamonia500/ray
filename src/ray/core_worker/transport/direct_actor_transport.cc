@@ -422,6 +422,7 @@ void CoreWorkerDirectTaskReceiver::Init(
 void CoreWorkerDirectTaskReceiver::HandleTask(
     const rpc::PushTaskRequest &request, rpc::PushTaskReply *reply,
     rpc::SendReplyCallback send_reply_callback) {
+  RAY_LOG(INFO) << "Task was pushed to this worker: " << request.DebugString();
   RAY_CHECK(waiter_ != nullptr) << "Must call init() prior to use";
   // Use `mutable_task_spec()` here as `task_spec()` returns a const reference
   // which doesn't work with std::move.
