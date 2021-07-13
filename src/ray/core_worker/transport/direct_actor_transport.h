@@ -603,6 +603,7 @@ class NormalSchedulingQueue : public SchedulingQueue {
            TaskID task_id = TaskID::Nil(),
 
            const std::vector<rpc::ObjectReference> &dependencies = {}) {
+    RAY_LOG(INFO) << "Task added to scheduling queue: " << task_id;
     absl::MutexLock lock(&mu_);
     // Normal tasks should not have ordering constraints.
     RAY_CHECK(seq_no == -1);
@@ -656,6 +657,7 @@ class NormalSchedulingQueue : public SchedulingQueue {
 
   /// Schedules as many requests as possible in sequence.
   void ScheduleRequests() {
+    RAY_LOG(INFO) << "ScheduleRequests() reached.";
     while (true) {
       InboundRequest head;
       {
@@ -669,6 +671,7 @@ class NormalSchedulingQueue : public SchedulingQueue {
       }
       head.Accept();
     }
+    RAY_LOG(INFO) << "Scheduling queue exhausted.";
   }
 
  private:
