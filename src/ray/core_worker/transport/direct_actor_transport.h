@@ -604,7 +604,9 @@ class NormalSchedulingQueue : public SchedulingQueue {
 
            const std::vector<rpc::ObjectReference> &dependencies = {}) {
     RAY_LOG(INFO) << "Task added to scheduling queue: " << task_id;
+    RAY_LOG(INFO) << "Acquiring Add mutex.";
     absl::MutexLock lock(&mu_);
+    RAY_LOG(INFO) << "Acquired Add mutex.";
     // Normal tasks should not have ordering constraints.
     RAY_CHECK(seq_no == -1);
     // Create a InboundRequest object for the new task, and add it to the queue.
@@ -661,7 +663,9 @@ class NormalSchedulingQueue : public SchedulingQueue {
     while (true) {
       InboundRequest head;
       {
+        RAY_LOG(INFO) << "Acquiring ScheduleRequests mutex.";
         absl::MutexLock lock(&mu_);
+        RAY_LOG(INFO) << "Acquired ScheduleRequests mutex.";
         if (!pending_normal_tasks_.empty()) {
           head = pending_normal_tasks_.front();
           pending_normal_tasks_.pop_front();
