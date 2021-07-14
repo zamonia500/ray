@@ -80,6 +80,12 @@ class FunctionActorManager:
         # So, the lock should be a reentrant lock.
         self.lock = threading.RLock()
         self.execution_infos = {}
+        # Whether the importing thread has stopped running. This is set by the
+        # importing thread itself.
+        self.importing_done = False
+        # An exception raised within the importing thread, if any. This is set
+        # by the importing thread itself.
+        self.importing_exc = None
 
     def increase_task_counter(self, job_id, function_descriptor):
         function_id = function_descriptor.function_id
@@ -483,8 +489,19 @@ class FunctionActorManager:
         # import thread. TODO(rkn): It shouldn't be possible to end
         # up in an infinite loop here, but we should push an error to
         # the driver if too much time is spent here.
-        while key not in self.imported_actor_classes:
+        while not self.importing_done:
+            if key not in self.imported_actor_classes:
+                break
             time.sleep(0.001)
+        else:
+            if self.importing_exc is not None:
+                raise RuntimeError(
+                    "Failed to load actor class from GCS, encountered the "
+                    f"following error: {self.importing_exc}")
+            else:
+                raise RuntimeError(
+                    "Failed to load actor class from GCS, importer thread "
+                    "no longer running.")
 
         # Fetch raw data from GCS.
         (job_id_str, class_name, module, pickled_class,

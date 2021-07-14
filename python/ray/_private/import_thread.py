@@ -85,8 +85,10 @@ class ImportThread:
                     key = self.redis_client.lindex("Exports", i)
                     self._process_key(key)
         except (OSError, redis.exceptions.ConnectionError) as e:
+            self.worker.function_actor_manager.importing_exc = e
             logger.error(f"ImportThread: {e}")
         finally:
+            self.worker.function_actor_manager.importing_done = True
             # Close the pubsub client to avoid leaking file descriptors.
             import_pubsub_client.close()
 
@@ -147,6 +149,7 @@ class ImportThread:
             # Keep track of the fact that this actor class has been
             # exported so that we know it is safe to turn this worker
             # into an actor of that class.
+            logger.info(f"Actor class imported: {key}")
             self.worker.function_actor_manager.imported_actor_classes.add(key)
         # TODO(rkn): We may need to bring back the case of
         # fetching actor classes here.
