@@ -149,7 +149,6 @@ class ImportThread:
             # Keep track of the fact that this actor class has been
             # exported so that we know it is safe to turn this worker
             # into an actor of that class.
-            logger.info(f"Actor class imported: {key}")
             self.worker.function_actor_manager.imported_actor_classes.add(key)
         # TODO(rkn): We may need to bring back the case of
         # fetching actor classes here.

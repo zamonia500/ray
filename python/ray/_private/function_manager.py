@@ -466,17 +466,12 @@ class FunctionActorManager:
                 f"sys.path: {sys.path}, "
                 f"Error Message: {str(e)}")
 
-    def _create_fake_actor_class(self, actor_class_name, actor_method_names):
+    def _create_fake_actor_class(self, actor_class_name):
         class TemporaryActor:
-            pass
-
-        def temporary_actor_method(*args, **kwargs):
-            raise RuntimeError(f"The actor with name {actor_class_name} "
-                               "failed to be imported, "
-                               "and so cannot execute this method.")
-
-        for method in actor_method_names:
-            setattr(TemporaryActor, method, temporary_actor_method)
+            def __getattr__(self, name):
+                raise RuntimeError(
+                    f"The actor with name {actor_class_name} failed to be "
+                    "imported, and so cannot execute method {name}().")
 
         return TemporaryActor
 
@@ -494,14 +489,29 @@ class FunctionActorManager:
                 break
             time.sleep(0.001)
         else:
-            if self.importing_exc is not None:
-                raise RuntimeError(
-                    "Failed to load actor class from GCS, encountered the "
-                    f"following error: {self.importing_exc}")
-            else:
-                raise RuntimeError(
-                    "Failed to load actor class from GCS, importer thread "
-                    "no longer running.")
+            exc = self.importing_exc
+            if exc is None:
+                exc = RuntimeError("Unknown error")
+            class_name = actor_creation_function_descriptor.class_name
+            logger.exception("Failed to load actor class %s.", class_name)
+            # The actor class failed to be unpickled, create a fake actor
+            # class instead (just to produce error messages and to prevent
+            # the driver from hanging).
+            actor_class = self._create_fake_actor_class(class_name)
+            # If an exception was thrown when the actor was imported, we record
+            # the traceback and notify the scheduler of the failure.
+            traceback_str = ray._private.utils.format_error_message(exc)
+            # Log the error message.
+            push_error_to_driver(
+                self._worker,
+                ray_constants.REGISTER_ACTOR_PUSH_ERROR,
+                f"Failed to load actor class '{class_name}' "
+                f"for actor ID {self._worker.actor_id.hex()}. "
+                f"Traceback:\n{traceback_str}",
+                job_id=job_id)
+            # TODO(rkn): In the future, it might make sense to have the worker
+            # exit here. However, currently that would lead to hanging if
+            # someone calls ray.get on a method invoked on the actor.
 
         # Fetch raw data from GCS.
         (job_id_str, class_name, module, pickled_class,
@@ -523,8 +533,7 @@ class FunctionActorManager:
             # The actor class failed to be unpickled, create a fake actor
             # class instead (just to produce error messages and to prevent
             # the driver from hanging).
-            actor_class = self._create_fake_actor_class(
-                class_name, actor_method_names)
+            actor_class = self._create_fake_actor_class(class_name)
             # If an exception was thrown when the actor was imported, we record
             # the traceback and notify the scheduler of the failure.
             traceback_str = ray._private.utils.format_error_message(
