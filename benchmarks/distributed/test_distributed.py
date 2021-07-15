@@ -140,8 +140,8 @@ def test_many_placement_groups():
         remove_placement_group(pg)
 
 
-# ray.init(address="auto", runtime_env=None)
-ray.client().env({}).connect()
+ray.init(address="auto")
+# ray.client(address="local").env({}).connect()
 
 scale_to(TEST_NUM_NODES)
 assert num_alive_nodes(
@@ -165,58 +165,58 @@ assert available_resources == cluster_resources, (
     str(available_resources) + " != " + str(cluster_resources))
 print("Done testing actors")
 
-task_start = perf_counter()
-test_max_running_tasks()
-task_end = perf_counter()
+# task_start = perf_counter()
+# test_max_running_tasks()
+# task_end = perf_counter()
 
-sleep(1)
-assert num_alive_nodes(
-) == TEST_NUM_NODES, "Wrong number of nodes in cluster " + len(ray.nodes())
-assert available_resources == cluster_resources, (
-    str(available_resources) + " != " + str(cluster_resources))
-print("Done testing tasks")
+# sleep(1)
+# assert num_alive_nodes(
+# ) == TEST_NUM_NODES, "Wrong number of nodes in cluster " + len(ray.nodes())
+# assert available_resources == cluster_resources, (
+#     str(available_resources) + " != " + str(cluster_resources))
+# print("Done testing tasks")
 
-pg_start = perf_counter()
-test_many_placement_groups()
-pg_end = perf_counter()
+# pg_start = perf_counter()
+# test_many_placement_groups()
+# pg_end = perf_counter()
 
-sleep(1)
-assert num_alive_nodes(
-) == TEST_NUM_NODES, "Wrong number of nodes in cluster " + len(ray.nodes())
-assert available_resources == cluster_resources, (
-    str(available_resources) + " != " + str(cluster_resources))
-print("Done testing placement groups")
+# sleep(1)
+# assert num_alive_nodes(
+# ) == TEST_NUM_NODES, "Wrong number of nodes in cluster " + len(ray.nodes())
+# assert available_resources == cluster_resources, (
+#     str(available_resources) + " != " + str(cluster_resources))
+# print("Done testing placement groups")
 
-launch_start = perf_counter()
-test_nodes()
-launch_end = perf_counter()
+# launch_start = perf_counter()
+# test_nodes()
+# launch_end = perf_counter()
 
-sleep(1)
-assert num_alive_nodes(
-) == MAX_NUM_NODES, "Wrong number of nodes in cluster " + len(ray.nodes())
-print("Done.")
+# sleep(1)
+# assert num_alive_nodes(
+# ) == MAX_NUM_NODES, "Wrong number of nodes in cluster " + len(ray.nodes())
+# print("Done.")
 
 actor_time = actor_end - actor_start
-task_time = task_end - task_start
-pg_time = pg_end - pg_start
-launch_time = launch_end - launch_start
+# task_time = task_end - task_start
+# pg_time = pg_end - pg_start
+# launch_time = launch_end - launch_start
 
 print(f"Actor time: {actor_time} ({MAX_ACTORS_IN_CLUSTER} actors)")
-print(f"Task time: {task_time} ({MAX_RUNNING_TASKS_IN_CLUSTER} tasks)")
-print(f"PG time: {pg_time} ({MAX_PLACEMENT_GROUPS} placement groups)")
-print(f"Node launch time: {launch_time} ({MAX_NUM_NODES} nodes)")
+# print(f"Task time: {task_time} ({MAX_RUNNING_TASKS_IN_CLUSTER} tasks)")
+# print(f"PG time: {pg_time} ({MAX_PLACEMENT_GROUPS} placement groups)")
+# print(f"Node launch time: {launch_time} ({MAX_NUM_NODES} nodes)")
 
 if "TEST_OUTPUT_JSON" in os.environ:
     out_file = open(os.environ["TEST_OUTPUT_JSON"], "w")
     results = {
         "actor_time": actor_time,
         "num_actors": MAX_ACTORS_IN_CLUSTER,
-        "task_time": task_time,
-        "num_tasks": MAX_RUNNING_TASKS_IN_CLUSTER,
-        "pg_time": pg_time,
-        "num_pgs": MAX_PLACEMENT_GROUPS,
-        "launch_time": launch_time,
-        "num_nodes": MAX_NUM_NODES,
+        # "task_time": task_time,
+        # "num_tasks": MAX_RUNNING_TASKS_IN_CLUSTER,
+        # "pg_time": pg_time,
+        # "num_pgs": MAX_PLACEMENT_GROUPS,
+        # "launch_time": launch_time,
+        # "num_nodes": MAX_NUM_NODES,
         "success": "1"
     }
     json.dump(results, out_file)

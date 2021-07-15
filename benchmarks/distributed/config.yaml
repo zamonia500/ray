@@ -11,6 +11,7 @@ provider:
 
 auth:
     ssh_user: ubuntu
+    ssh_private_key: ~/.ssh/clark-dev-autoscaler-us-west.pem
 
 
 available_node_types:
@@ -18,6 +19,7 @@ available_node_types:
         node_config:
             InstanceType: r5dn.16xlarge # Network optimized.
             ImageId: ami-0a2363a9cff180a64
+            KeyName: clark-dev-autoscaler-us-west
         resources:
           CPU: 0
           node: 1
@@ -27,6 +29,7 @@ available_node_types:
         node_config:
             InstanceType: m5.16xlarge
             ImageId: ami-0a2363a9cff180a64
+            KeyName: clark-dev-autoscaler-us-west
         resources:
           node: 1
         min_workers: 64
@@ -35,6 +38,7 @@ available_node_types:
         node_config:
             InstanceType: m5.xlarge
             ImageId: ami-0a2363a9cff180a64
+            KeyName: clark-dev-autoscaler-us-west
         resources:
           node: 1
         max_workers: 999999
@@ -49,7 +53,7 @@ file_mounts: {
 
 setup_commands:
   - pip uninstall -y ray
-  - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/releases/1.4.0/6ac5e0e5ad45070e27c77aca7267bcee30cc4b4a/ray-1.4.0-cp37-cp37m-manylinux2014_x86_64.whl
+  - pip install -U https://ray-wheels.s3.us-west-2.amazonaws.com/test_wheels/fix_scalability_envelope/0e8fde25780639bd998edb486e1b4b5ea24c658d/ray-2.0.0.dev0-cp37-cp37m-manylinux2014_x86_64.whl
   - pip install tqdm
   - sudo bash -c 'rm -rf /etc/security/limits.d; echo "* soft nofile 65535" >> /etc/security/limits.conf; echo "* hard nofile 65535" >> /etc/security/limits.conf;'
 
