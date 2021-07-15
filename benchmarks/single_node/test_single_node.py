@@ -145,7 +145,7 @@ args_end = perf_counter()
 
 time.sleep(5)
 assert_no_leaks()
-print("Finished many args")
+print("Finished many args.")
 
 returns_start = perf_counter()
 test_many_returns()
