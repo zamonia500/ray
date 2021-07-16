@@ -321,9 +321,10 @@ void RayLog::InstallFailureSignalHandler() {
   if (is_failure_signal_handler_installed_) {
     return;
   }
-  absl::FailureSignalHandlerOptions options{};
-  options.writerfn = WriteFailureMessage;
-  absl::InstallFailureSignalHandler(options);
+  // absl::FailureSignalHandlerOptions options{};
+  // options.writerfn = WriteFailureMessage;
+  // absl::InstallFailureSignalHandler(options);
+  backward::SignalHandling sh;
   is_failure_signal_handler_installed_ = true;
 }
 

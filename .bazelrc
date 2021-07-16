@@ -99,6 +99,8 @@ test:asan --test_env=LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libasan.so.5 /usr/lib
 # test:asan --test_env=LD_PRELOAD="/usr/lib/gcc/x86_64-linux-gnu/7/libasan.so"
 test:asan-buildkite --test_env=LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libasan.so.5"
 
+build:trace --copt -g
+
 # CI configuration:
 aquery:ci --color=no
 aquery:ci --noshow_progress

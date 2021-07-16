@@ -367,6 +367,9 @@ NodeManager::NodeManager(instrumented_io_context &io_service, const NodeID &self
             new rpc::RuntimeEnvAgentClient(ip_address, port, client_call_manager_));
       });
   worker_pool_.SetAgentManager(agent_manager_);
+
+  int *foo = (int*)-1;
+  RAY_LOG(INFO) << *foo;
 }
 
 ray::Status NodeManager::RegisterGcs() {
