@@ -500,6 +500,8 @@ def build(build_python, build_java, build_cpp):
     if setup_spec.build_type == BuildType.ASAN:
         bazel_flags.extend(["--config=asan-build"])
 
+    bazel_flags.extend(["--strip=never", "--copt=-ggdb"])
+
     return bazel_invoke(
         subprocess.check_call,
         bazel_precmd_flags + ["build"] + bazel_flags + ["--"] + bazel_targets,
