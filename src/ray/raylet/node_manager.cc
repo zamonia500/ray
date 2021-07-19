@@ -368,8 +368,8 @@ NodeManager::NodeManager(instrumented_io_context &io_service, const NodeID &self
       });
   worker_pool_.SetAgentManager(agent_manager_);
 
-  int *foo = (int *)-1;
-  RAY_LOG(INFO) << *foo;
+  // int *foo = (int *)-1;
+  // RAY_LOG(INFO) << *foo;
 }
 
 ray::Status NodeManager::RegisterGcs() {
