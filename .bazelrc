@@ -9,6 +9,8 @@ build --action_env=PATH
 build --compilation_mode=opt
 build:linux --cxxopt="-std=c++14"
 build:linux --copt -g
+build:linux --copt -ldwarf
+build:linux --cxxopt="-DBACKWARD_HAS_DWARF=1"
 build:macos --cxxopt="-std=c++14"
 build:clang-cl --cxxopt="-std=c++14"
 build:msvc --cxxopt="/std:c++14"

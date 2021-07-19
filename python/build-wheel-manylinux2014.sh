@@ -25,6 +25,7 @@ NUMPY_VERSIONS=("1.14.5"
 yum -y install unzip zip sudo
 yum -y install java-1.8.0-openjdk java-1.8.0-openjdk-devel xz
 yum -y install openssl
+yum -y install libdwarf-devel
 
 java -version
 java_bin=$(readlink -f "$(command -v java)")
