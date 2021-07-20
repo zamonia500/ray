@@ -17,8 +17,7 @@ from ray.types import ObjectRef
 from ray.experimental.data.block import Block, BlockMetadata
 from ray.experimental.data.dataset import Dataset
 from ray.experimental.data.datasource import Datasource, RangeDatasource, \
-    JSONDatasource, CSVDatasource, ReadTask, _S3FileSystemWrapper
-from ray.experimental.data.impl import reader as _reader
+    JSONDatasource, CSVDatasource, BinaryDatasource, ReadTask
 from ray.experimental.data.impl.arrow_block import ArrowBlock, ArrowRow, \
     DelegatingArrowBlockBuilder
 from ray.experimental.data.impl.block_list import BlockList
@@ -296,7 +295,6 @@ def read_csv(paths: Union[str, List[str]],
 
 def read_binary_files(
         paths: Union[str, List[str]],
-        include_paths: bool = False,
         filesystem: Optional["pyarrow.fs.FileSystem"] = None,
         parallelism: int = 200) -> Dataset[Union[Tuple[str, bytes], bytes]]:
     """Create a dataset from binary files of arbitrary contents.
@@ -319,20 +317,11 @@ def read_binary_files(
     Returns:
         Dataset holding Arrow records read from the specified paths.
     """
-    import pyarrow as pa
-
-    if isinstance(paths, str):
-        paths = _reader.list_objects(paths)
-
-    dataset = from_items(paths, parallelism=parallelism)
-    if isinstance(filesystem, pa.fs.S3FileSystem):
-        filesystem = _S3FileSystemWrapper(filesystem)
-
-    return dataset.map(
-        lambda path: _reader.read_file(
-            path,
-            include_paths=include_paths,
-            filesystem=filesystem))
+    return read_datasource(
+        BinaryDatasource(),
+        parallelism=parallelism,
+        paths=paths,
+        filesystem=filesystem)
 
 
 def from_dask(df: "dask.DataFrame",
