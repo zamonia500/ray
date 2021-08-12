@@ -211,12 +211,12 @@ void OwnershipBasedObjectDirectory::ObjectLocationSubscriptionCallback(
   // If the lookup has failed, that means the object is lost. Trigger the callback in this
   // case to handle failure properly.
   if (location_updated || location_lookup_failed) {
-    RAY_LOG(DEBUG) << "Pushing location updates to subscribers for object " << object_id
-                   << ": " << it->second.current_object_locations.size()
-                   << " locations, spilled_url: " << it->second.spilled_url
-                   << ", spilled node ID: " << it->second.spilled_node_id
-                   << ", object size: " << it->second.object_size
-                   << ", lookup failed: " << location_lookup_failed;
+    RAY_LOG(INFO) << "Pushing location updates to subscribers for object " << object_id
+                  << ": " << it->second.current_object_locations.size()
+                  << " locations, spilled_url: " << it->second.spilled_url
+                  << ", spilled node ID: " << it->second.spilled_node_id
+                  << ", object size: " << it->second.object_size
+                  << ", lookup failed: " << location_lookup_failed;
     metrics_num_object_location_updates_++;
     cum_metrics_num_object_location_updates_++;
     // Copy the callbacks so that the callbacks can unsubscribe without interrupting

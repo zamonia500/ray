@@ -1123,11 +1123,11 @@ void ReferenceCounter::PushToLocationSubscribers(ReferenceTable::iterator it) {
   const auto &spilled_node_id = it->second.spilled_node_id;
   const auto &optional_primary_node_id = it->second.pinned_at_raylet_id;
   const auto &primary_node_id = optional_primary_node_id.value_or(NodeID::Nil());
-  RAY_LOG(DEBUG) << "Publish a message for " << object_id << ", " << locations.size()
-                 << " locations, spilled url: " << spilled_url
-                 << ", spilled node ID: " << spilled_node_id
-                 << ", and object size: " << object_size
-                 << ", and primary node ID: " << primary_node_id;
+  RAY_LOG(INFO) << "Publish a message for " << object_id << ", " << locations.size()
+                << " locations, spilled url: " << spilled_url
+                << ", spilled node ID: " << spilled_node_id
+                << ", and object size: " << object_size
+                << ", and primary node ID: " << primary_node_id;
   rpc::PubMessage pub_message;
   pub_message.set_key_id(object_id.Binary());
   pub_message.set_channel_type(rpc::ChannelType::WORKER_OBJECT_LOCATIONS_CHANNEL);
