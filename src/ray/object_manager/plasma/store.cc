@@ -662,7 +662,7 @@ void PlasmaStore::ProcessCreateRequests() {
     retry_after_ms = delay_on_oom_ms_;
 
     if (!dumped_on_oom_) {
-      RAY_LOG(INFO) << "Plasma store at capacity\n" << GetDebugDump();
+      // RAY_LOG(INFO) << "Plasma store at capacity\n" << GetDebugDump();
       dumped_on_oom_ = true;
     }
   } else {

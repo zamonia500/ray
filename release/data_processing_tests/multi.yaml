@@ -1,4 +1,4 @@
-cluster_name: Dask-on-ray-release-cluster
+cluster_name: 5000-partitions-cluster
 
 # The minimum number of workers nodes to launch in addition to the head
 # node. This number should be >= 0.
@@ -60,6 +60,11 @@ available_node_types:
     head_node_t:
         node_config:
             InstanceType: x1e.4xlarge
+            ImageId: ami-0a2363a9cff180a64 # Deep Learning AMI (Ubuntu) Version 30
+            BlockDeviceMappings:
+                - DeviceName: /dev/sda1
+                  Ebs:
+                      VolumeSize: 1000
         # For AWS instances, autoscaler will automatically add the available
         # CPUs/GPUs/accelerator_type ({"CPU": 4} for m4.xlarge) in "resources".
         resources: {"object_store_memory": 21474836480}
@@ -68,42 +73,17 @@ available_node_types:
     worker_node_t:
         node_config:
             InstanceType: i3.8xlarge
+            ImageId: ami-0a2363a9cff180a64 # Deep Learning AMI (Ubuntu) Version 30
+            BlockDeviceMappings:
+                - DeviceName: /dev/sda1
+                  Ebs:
+                      VolumeSize: 1000
         # Autoscaler will auto fill the CPU resources below.
         resources: {"object_store_memory": 21474836480}
         min_workers: 19
         max_workers: 19
 
 head_node_type: head_node_t
-
-# Provider-specific config for the head node, e.g. instance type. By default
-# Ray will auto-configure unspecified fields such as SubnetId and KeyName.
-# For more documentation on available fields, see:
-# http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
-head_node:
-    # InstanceType: i3.8xlarge
-    ImageId: ami-0a2363a9cff180a64 # Deep Learning AMI (Ubuntu) Version 30
-
-    # You can provision additional disk space with a conf as follows
-    BlockDeviceMappings:
-        - DeviceName: /dev/sda1
-          Ebs:
-              VolumeSize: 1000
-
-    # Additional options in the boto docs.
-
-# Provider-specific config for worker nodes, e.g. instance type. By default
-# Ray will auto-configure unspecified fields such as SubnetId and KeyName.
-# For more documentation on available fields, see:
-# http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
-worker_nodes:
-    # InstanceType: r5.4xlarge
-    ImageId: ami-0a2363a9cff180a64 # Deep Learning AMI (Ubuntu) Version 30
-
-    # You can provision additional disk space with a conf as follows
-    BlockDeviceMappings:
-        - DeviceName: /dev/sda1
-          Ebs:
-              VolumeSize: 1000
 
 # Patterns for files to exclude when running rsync up or rsync down
 rsync_exclude:
@@ -131,16 +111,16 @@ setup_commands:
     # - sudo apt install -y gdb
     # - sudo apt install -y linux-tools-common
     - echo 'export PATH="$HOME/anaconda3/envs/tensorflow_p36/bin:$PATH"' >> ~/.bashrc
-    - pip install -U "ray[full] @ https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-2.0.0.dev0-cp36-cp36m-manylinux2014_x86_64.whl"
+    - pip install -U "ray[default] @ https://s3-us-west-2.amazonaws.com/ray-wheels/test_wheels/obod-hanging/bdc37b153b28ebe036800fc40aeae916ea213e79/ray-2.0.0.dev0-cp36-cp36m-manylinux2014_x86_64.whl"
     - sudo bash -c 'rm -rf /etc/security/limits.d; echo "* soft nofile 165536" >> /etc/security/limits.conf; echo "* hard nofile 165536" >> /etc/security/limits.conf;'
     - pip install tqdm
 
 # Command to start ray on the head node. You don't need to change this.
 head_start_ray_commands:
     - ray stop
-    - RAY_max_direct_call_object_size=0 ray start --head --port=6379 --object-manager-port=8076 --object-store-memory=21474836480 --autoscaling-config=~/ray_bootstrap_config.yaml
+    - ray start --head --port=6379 --object-store-memory=21474836480 --autoscaling-config=~/ray_bootstrap_config.yaml --system-config='{"max_direct_call_object_size":0,"grpc_keepalive_timeout_ms":30000,"grpc_keepalive_time_ms":7200000}'
 
 # Command to start ray on worker nodes. You don't need to change this.
 worker_start_ray_commands:
     - ray stop
-    - RAY_max_direct_call_object_size=0 ray start --address=$RAY_HEAD_IP:6379 --object-store-memory=21474836480 --object-manager-port=8076
+    - ray start --address=$RAY_HEAD_IP:6379 --object-store-memory=21474836480
