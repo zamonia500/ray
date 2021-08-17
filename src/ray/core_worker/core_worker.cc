@@ -424,8 +424,12 @@ CoreWorker::CoreWorker(const CoreWorkerOptions &options, const WorkerID &worker_
 
   // Start RPC server after all the task receivers are properly initialized and we have
   // our assigned port from the raylet.
+  auto num_threads = 1;
+  if (options_.worker_type == WorkerType::DRIVER) {
+    num_threads = 8;
+  }
   core_worker_server_ = std::make_unique<rpc::GrpcServer>(
-      WorkerTypeString(options_.worker_type), assigned_port);
+      WorkerTypeString(options_.worker_type), assigned_port, /*num_threads*/ num_threads);
   core_worker_server_->RegisterService(grpc_service_);
   core_worker_server_->Run();
 
