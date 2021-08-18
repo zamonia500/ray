@@ -111,7 +111,7 @@ setup_commands:
     # - sudo apt install -y gdb
     # - sudo apt install -y linux-tools-common
     - echo 'export PATH="$HOME/anaconda3/envs/tensorflow_p36/bin:$PATH"' >> ~/.bashrc
-    - pip install -U "ray[default] @ https://s3-us-west-2.amazonaws.com/ray-wheels/test_wheels/obod-hanging/bdc37b153b28ebe036800fc40aeae916ea213e79/ray-2.0.0.dev0-cp36-cp36m-manylinux2014_x86_64.whl"
+    - pip install -U "ray[default] @ https://s3-us-west-2.amazonaws.com/ray-wheels/test_wheels/obod-hanging/2641434123e064ba809c7c04833335be47dff458/ray-2.0.0.dev0-cp36-cp36m-manylinux2014_x86_64.whl"
     - sudo bash -c 'rm -rf /etc/security/limits.d; echo "* soft nofile 165536" >> /etc/security/limits.conf; echo "* hard nofile 165536" >> /etc/security/limits.conf;'
     - pip install tqdm
 
