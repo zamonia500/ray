@@ -560,6 +560,12 @@ class RayletServicer(ray_client_pb2_grpc.RayletDriverServicer):
             self.object_refs[client_id][out.binary()] = out
         return [out.binary() for out in outputs]
 
+    def KeepAlive(self, request: ray_client_pb2.KeepAliveRequest,
+                  context: Any) -> ray_client_pb2.KeepAliveResponse:
+        echo = request.echo_request
+        response = ray_client_pb2.KeepAliveResponse(echo_response=echo)
+        return response
+
 
 def return_exception_in_context(err, context):
     if context is not None:

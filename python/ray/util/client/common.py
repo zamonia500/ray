@@ -420,7 +420,9 @@ def _keepalive_main(stop_keepalive_event: threading.Event,
             duration = time.time() - start
             response = stub.KeepAlive(request, metadata=metadata)
             if response.echo_response != request.echo_request:
-                logger.warning("Keepalive echo did not match.")
+                logger.warning(
+                    f"Keepalive echo did not match. {response.echo_response} "
+                    f"!= {response.echo_request}")
             wait_time = max(MANUAL_KEEPALIVE_INTERVAL - duration, 0)
             if stop_keepalive_event.wait(timeout=wait_time):
                 # Keep looping until the stop_keepalive event is set

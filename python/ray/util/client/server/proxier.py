@@ -372,6 +372,10 @@ class RayletServicerProxy(ray_client_pb2_grpc.RayletDriverServicer):
     def Schedule(self, task, context=None) -> ray_client_pb2.ClientTaskTicket:
         return self._call_inner_function(task, context, "Schedule")
 
+    def KeepAlive(self, request: ray_client_pb2.KeepAliveRequest,
+                  context: Any) -> ray_client_pb2.KeepAliveResponse:
+        return self._call_inner_function(request, context, "KeepAlive")
+
 
 def ray_client_server_env_prep(job_config: JobConfig) -> JobConfig:
     return job_config

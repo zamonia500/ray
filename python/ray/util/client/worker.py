@@ -5,6 +5,7 @@ to the server.
 import base64
 import json
 import logging
+import threading
 import time
 import uuid
 import warnings
@@ -36,6 +37,7 @@ from ray.util.client.common import ClientRemoteFunc
 from ray.util.client.common import ClientActorRef
 from ray.util.client.common import ClientObjectRef
 from ray.util.client.common import GRPC_OPTIONS
+from ray.util.client.common import _keepalive_main
 from ray.util.client.dataclient import DataClient
 from ray.util.client.logsclient import LogstreamClient
 from ray.util.debug import log_once
@@ -170,9 +172,20 @@ class Worker:
         self.total_num_tasks_scheduled = 0
         self.total_outbound_message_size_bytes = 0
 
+        # Keepalive thread for server
+        self.stop_keepalive = threading.Event()
+        self.keepalive_thread = self._start_keepalive_thread()
+        self.keepalive_thread.start()
+
     def _on_channel_state_change(self, conn_state: grpc.ChannelConnectivity):
         logger.debug(f"client gRPC channel state change: {conn_state}")
         self._conn_state = conn_state
+
+    def _start_keepalive_thread(self) -> threading.Thread:
+        return threading.Thread(
+            target=_keepalive_main,
+            args=(self.stop_keepalive, self.server, logger, self._metadata),
+            daemon=True)
 
     def connection_info(self):
         try:
@@ -393,11 +406,14 @@ class Worker:
         self.reference_count[id] += 1
 
     def close(self):
+        self.stop_keepalive.set()
         self.data_client.close()
         self.log_client.close()
         if self.channel:
             self.channel.close()
             self.channel = None
+        if self.keepalive_thread is not None:
+            self.keepalive_thread.join()
         self.server = None
         self.closed = True
 

@@ -306,6 +306,8 @@ service RayletDriver {
   rpc ListNamedActors(ClientListNamedActorsRequest)
       returns (ClientListNamedActorsResponse) {
   }
+  rpc KeepAlive(KeepAliveRequest) returns (KeepAliveResponse) {
+  }
 }
 
 message ReleaseRequest {
