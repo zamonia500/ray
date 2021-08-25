@@ -184,7 +184,7 @@ class Worker:
     def _start_keepalive_thread(self) -> threading.Thread:
         return threading.Thread(
             target=_keepalive_main,
-            args=(self.stop_keepalive, self.server, logger, self._metadata),
+            args=(self.stop_keepalive, self.server, logger, self.metadata),
             daemon=True)
 
     def connection_info(self):
