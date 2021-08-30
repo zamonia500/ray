@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <boost/optional/optional.hpp>
 #include <string>
 #include <utility>
 #include <vector>
@@ -38,7 +39,14 @@ typedef std::function<std::shared_ptr<rpc::RuntimeEnvAgentClientInterface>(
 typedef std::function<void(bool successful,
                            const std::string &serialized_runtime_env_context)>
     CreateRuntimeEnvCallback;
+
 typedef std::function<void()> DeleteRuntimeEnvCallback;
+
+typedef std::function<void(ray::Status status, const boost::optional<int> &result)>
+    PutAgentAddressCallback;
+typedef std::function<void(const std::string &value,
+                           const PutAgentAddressCallback &callback)>
+    PutAgentAddressFn;
 
 class AgentManager : public rpc::AgentManagerServiceHandler {
  public:
@@ -49,10 +57,12 @@ class AgentManager : public rpc::AgentManagerServiceHandler {
 
   explicit AgentManager(Options options, DelayExecutorFn delay_executor,
                         RuntimeEnvAgentClientFactoryFn runtime_env_agent_client_factory,
+                        PutAgentAddressFn put_agent_address,
                         bool start_agent = true /* for test */)
       : options_(std::move(options)),
         delay_executor_(std::move(delay_executor)),
-        runtime_env_agent_client_factory_(std::move(runtime_env_agent_client_factory)) {
+        runtime_env_agent_client_factory_(std::move(runtime_env_agent_client_factory)),
+        put_agent_address_(put_agent_address) {
     if (start_agent) {
       StartAgent();
     }
@@ -64,13 +74,14 @@ class AgentManager : public rpc::AgentManagerServiceHandler {
 
   /// Request agent to create runtime env.
   /// \param[in] runtime_env The runtime env.
-  void CreateRuntimeEnv(const JobID &job_id, const std::string &serialized_runtime_env,
-                        CreateRuntimeEnvCallback callback);
+  virtual void CreateRuntimeEnv(const JobID &job_id,
+                                const std::string &serialized_runtime_env,
+                                CreateRuntimeEnvCallback callback);
 
   /// Request agent to delete runtime env.
   /// \param[in] runtime_env The runtime env.
-  void DeleteRuntimeEnv(const std::string &serialized_runtime_env,
-                        DeleteRuntimeEnvCallback callback);
+  virtual void DeleteRuntimeEnv(const std::string &serialized_runtime_env,
+                                DeleteRuntimeEnvCallback callback);
 
  private:
   void StartAgent();
@@ -82,6 +93,7 @@ class AgentManager : public rpc::AgentManagerServiceHandler {
   std::string agent_ip_address_;
   DelayExecutorFn delay_executor_;
   RuntimeEnvAgentClientFactoryFn runtime_env_agent_client_factory_;
+  PutAgentAddressFn put_agent_address_;
   std::shared_ptr<rpc::RuntimeEnvAgentClientInterface> runtime_env_agent_client_;
 };
 

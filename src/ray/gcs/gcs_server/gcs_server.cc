@@ -26,6 +26,8 @@
 #include "ray/gcs/gcs_server/gcs_worker_manager.h"
 #include "ray/gcs/gcs_server/stats_handler_impl.h"
 #include "ray/gcs/gcs_server/task_info_handler_impl.h"
+#include "ray/stats/stats.h"
+#include "ray/util/agent_finder.h"
 
 namespace ray {
 namespace gcs {
@@ -35,7 +37,8 @@ GcsServer::GcsServer(const ray::gcs::GcsServerConfig &config,
     : config_(config),
       main_service_(main_service),
       rpc_server_(config.grpc_server_name, config.grpc_server_port,
-                  config.grpc_server_thread_num),
+                  config.grpc_server_thread_num,
+                  /*keepalive_time_ms=*/RayConfig::instance().grpc_keepalive_time_ms()),
       client_call_manager_(main_service),
       raylet_client_pool_(
           std::make_shared<rpc::NodeManagerClientPool>(client_call_manager_)),
@@ -51,6 +54,33 @@ void GcsServer::Start() {
   redis_client_ = std::make_shared<RedisClient>(redis_client_options);
   auto status = redis_client_->Connect(main_service_);
   RAY_CHECK(status.ok()) << "Failed to init redis gcs client as " << status;
+
+  // Init stats.
+  const ray::stats::TagsType global_tags = {
+      {ray::stats::ComponentKey, "gcs_server"},
+      {ray::stats::VersionKey, "2.0.0.dev0"},
+      {ray::stats::NodeAddressKey, config_.node_ip_address}};
+  ray::stats::Init(
+      global_tags, [this](const ray::stats::GetAgentAddressCallback &callback) {
+        // This is the opencensus report thread, we should do the GCS operation
+        // in main_service_.
+        main_service_.post(
+            [this, callback] {
+              if (!gcs_node_manager_) {
+                callback(ray::Status::Invalid("The GcsNodeManager is not initialized."),
+                         std::string());
+                return;
+              }
+              auto all_alive_nodes = gcs_node_manager_->GetAllAliveNodes();
+              if (all_alive_nodes.empty()) {
+                callback(ray::Status::Invalid("No alive nodes."), std::string());
+                return;
+              }
+              auto selected_node_id = all_alive_nodes.begin()->first;
+              GetAgentAddress(redis_client_, selected_node_id, callback);
+            },
+            "GetAgentAddressCallback");
+      });
 
   // Init redis failure detector.
   gcs_redis_failure_detector_ = std::make_shared<GcsRedisFailureDetector>(
@@ -160,9 +190,7 @@ void GcsServer::Stop() {
     // time, causing many nodes die after GCS's failure.
     gcs_heartbeat_manager_->Stop();
 
-    if (config_.pull_based_resource_reporting) {
-      gcs_resource_report_poller_->Stop();
-    }
+    gcs_resource_report_poller_->Stop();
 
     if (config_.grpc_based_resource_broadcast) {
       grpc_based_resource_broadcaster_->Stop();
@@ -170,6 +198,9 @@ void GcsServer::Stop() {
 
     // Shutdown the rpc server
     rpc_server_.Shutdown();
+
+    // Shutdown stats.
+    ray::stats::Shutdown();
 
     is_stopped_ = true;
     RAY_LOG(INFO) << "GCS server stopped.";
@@ -342,15 +373,13 @@ void GcsServer::InitTaskInfoHandler() {
 }
 
 void GcsServer::InitResourceReportPolling(const GcsInitData &gcs_init_data) {
-  if (config_.pull_based_resource_reporting) {
-    gcs_resource_report_poller_.reset(new GcsResourceReportPoller(
-        raylet_client_pool_, [this](const rpc::ResourcesData &report) {
-          gcs_resource_manager_->UpdateFromResourceReport(report);
-        }));
+  gcs_resource_report_poller_.reset(new GcsResourceReportPoller(
+      raylet_client_pool_, [this](const rpc::ResourcesData &report) {
+        gcs_resource_manager_->UpdateFromResourceReport(report);
+      }));
 
-    gcs_resource_report_poller_->Initialize(gcs_init_data);
-    gcs_resource_report_poller_->Start();
-  }
+  gcs_resource_report_poller_->Initialize(gcs_init_data);
+  gcs_resource_report_poller_->Start();
 }
 
 void GcsServer::InitResourceReportBroadcasting(const GcsInitData &gcs_init_data) {
@@ -427,9 +456,7 @@ void GcsServer::InstallEventListeners() {
     gcs_placement_group_manager_->SchedulePendingPlacementGroups();
     gcs_actor_manager_->SchedulePendingActors();
     gcs_heartbeat_manager_->AddNode(NodeID::FromBinary(node->node_id()));
-    if (config_.pull_based_resource_reporting) {
-      gcs_resource_report_poller_->HandleNodeAdded(*node);
-    }
+    gcs_resource_report_poller_->HandleNodeAdded(*node);
     if (config_.grpc_based_resource_broadcast) {
       grpc_based_resource_broadcaster_->HandleNodeAdded(*node);
     }
@@ -443,9 +470,7 @@ void GcsServer::InstallEventListeners() {
         gcs_placement_group_manager_->OnNodeDead(node_id);
         gcs_actor_manager_->OnNodeDead(node_id);
         raylet_client_pool_->Disconnect(NodeID::FromBinary(node->node_id()));
-        if (config_.pull_based_resource_reporting) {
-          gcs_resource_report_poller_->HandleNodeRemoved(*node);
-        }
+        gcs_resource_report_poller_->HandleNodeRemoved(*node);
         if (config_.grpc_based_resource_broadcast) {
           grpc_based_resource_broadcaster_->HandleNodeRemoved(*node);
         }

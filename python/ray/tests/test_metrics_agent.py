@@ -1,8 +1,10 @@
+import asyncio
 import json
 import pathlib
 import platform
 from pprint import pformat
 import sys
+import os
 import time
 from unittest.mock import MagicMock
 
@@ -13,7 +15,15 @@ from ray.autoscaler._private.constants import AUTOSCALER_METRIC_PORT
 from ray.ray_constants import PROMETHEUS_SERVICE_DISCOVERY_FILE
 from ray._private.metrics_agent import PrometheusServiceDiscoveryWriter
 from ray.util.metrics import Counter, Histogram, Gauge
-from ray.test_utils import wait_for_condition, SignalActor, fetch_prometheus
+from ray._private.test_utils import (wait_for_condition, SignalActor,
+                                     fetch_prometheus)
+
+os.environ["RAY_event_stats"] = "1"
+
+try:
+    create_task = asyncio.create_task
+except AttributeError:
+    create_task = asyncio.ensure_future
 
 try:
     import prometheus_client
@@ -52,6 +62,10 @@ _METRICS = [
     "ray_pending_actors",
     "ray_pending_placement_groups",
     "ray_outbound_heartbeat_size_kb_sum",
+    "ray_operation_count",
+    "ray_operation_run_time_ms",
+    "ray_operation_queue_time_ms",
+    "ray_operation_active_count",
 ]
 
 # This list of metrics should be kept in sync with
@@ -70,7 +84,7 @@ _AUTOSCALER_METRICS = [
 
 
 @pytest.fixture
-def _setup_cluster_for_test(ray_start_cluster):
+async def _setup_cluster_for_test(ray_start_cluster):
     NUM_NODES = 2
     cluster = ray_start_cluster
     # Add a head node.
@@ -101,12 +115,17 @@ def _setup_cluster_for_test(ray_start_cluster):
         async def ping(self):
             histogram = Histogram(
                 "test_histogram", description="desc", boundaries=[0.1, 1.6])
-            histogram = ray.get(ray.put(histogram))  # Test serialization.
+            histogram = await ray.put(histogram)  # Test serialization.
             histogram.record(1.5)
-            ray.get(worker_should_exit.wait.remote())
+            await worker_should_exit.wait.remote()
 
     a = A.remote()
-    obj_refs = [f.remote(), a.ping.remote()]
+    obj_refs = []
+
+    async def _metrics_gen():
+        while True:
+            obj_refs.extend([f.remote(), a.ping.remote()])
+            await asyncio.sleep(0.1)
 
     node_info_list = ray.nodes()
     prom_addresses = []
@@ -116,7 +135,9 @@ def _setup_cluster_for_test(ray_start_cluster):
         prom_addresses.append(f"{addr}:{metrics_export_port}")
     autoscaler_export_addr = "{}:{}".format(cluster.head_node.node_ip_address,
                                             AUTOSCALER_METRIC_PORT)
+    task = create_task(_metrics_gen())
     yield prom_addresses, autoscaler_export_addr
+    task.cancel()
 
     ray.get(worker_should_exit.send.remote())
     ray.get(obj_refs)
@@ -127,8 +148,9 @@ def _setup_cluster_for_test(ray_start_cluster):
 @pytest.mark.skipif(sys.platform == "win32", reason="Failing on Windows.")
 @pytest.mark.skipif(
     prometheus_client is None, reason="Prometheus not installed")
-def test_metrics_export_end_to_end(_setup_cluster_for_test):
-    TEST_TIMEOUT_S = 20
+@pytest.mark.asyncio
+async def test_metrics_export_end_to_end(_setup_cluster_for_test):
+    TEST_TIMEOUT_S = 30
 
     prom_addresses, autoscaler_export_addr = _setup_cluster_for_test
 

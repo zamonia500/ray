@@ -90,6 +90,8 @@ class RayParams:
             external machines.
         dashboard_port: The port to bind the dashboard server to.
             Defaults to 8265.
+        dashboard_agent_listen_port: The port for dashboard agents to listen on
+            for HTTP requests.
         logging_level: Logging level, default will be logging.INFO.
         logging_format: Logging format, default contains a timestamp,
             filename, line number, and message. See ray_constants.py.
@@ -103,7 +105,7 @@ class RayParams:
             monitor the log files for all processes on this node and push their
             contents to Redis.
         autoscaling_config: path to autoscaling config file.
-        metrics_agent_port(int): The port to bind metrics agent.
+        dashboard_agent_port(int): The port to bind dashboard agent.
         metrics_export_port(int): The port at which metrics are exposed
             through a Prometheus endpoint.
         no_monitor(bool): If True, the ray autoscaler monitor for this cluster
@@ -157,6 +159,7 @@ class RayParams:
                  include_dashboard=None,
                  dashboard_host=ray_constants.DEFAULT_DASHBOARD_IP,
                  dashboard_port=ray_constants.DEFAULT_DASHBOARD_PORT,
+                 dashboard_agent_listen_port=0,
                  logging_level=logging.INFO,
                  logging_format=ray_constants.LOGGER_FORMAT,
                  plasma_store_socket_name=None,
@@ -168,7 +171,7 @@ class RayParams:
                  ray_debugger_external=False,
                  _system_config=None,
                  enable_object_reconstruction=False,
-                 metrics_agent_port=None,
+                 dashboard_agent_port=None,
                  metrics_export_port=None,
                  tracing_startup_hook=None,
                  no_monitor=False,
@@ -208,12 +211,13 @@ class RayParams:
         self.include_dashboard = include_dashboard
         self.dashboard_host = dashboard_host
         self.dashboard_port = dashboard_port
+        self.dashboard_agent_listen_port = dashboard_agent_listen_port
         self.plasma_store_socket_name = plasma_store_socket_name
         self.raylet_socket_name = raylet_socket_name
         self.temp_dir = temp_dir
         self.include_log_monitor = include_log_monitor
         self.autoscaling_config = autoscaling_config
-        self.metrics_agent_port = metrics_agent_port
+        self.dashboard_agent_port = dashboard_agent_port
         self.metrics_export_port = metrics_export_port
         self.tracing_startup_hook = tracing_startup_hook
         self.no_monitor = no_monitor
@@ -294,7 +298,7 @@ class RayParams:
             "gcs_server": wrap_port(self.gcs_server_port),
             "client_server": wrap_port(self.ray_client_server_port),
             "dashboard": wrap_port(self.dashboard_port),
-            "dashboard_agent": wrap_port(self.metrics_agent_port),
+            "dashboard_agent": wrap_port(self.dashboard_agent_port),
             "metrics_export": wrap_port(self.metrics_export_port),
         }
         redis_shard_ports = self.redis_shard_ports

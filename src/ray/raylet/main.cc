@@ -22,13 +22,12 @@
 #include "ray/common/task/task_common.h"
 #include "ray/gcs/gcs_client/service_based_gcs_client.h"
 #include "ray/raylet/raylet.h"
-#include "ray/stats/stats.h"
+#include "ray/util/event.h"
 
 DEFINE_string(raylet_socket_name, "", "The socket name of raylet.");
 DEFINE_string(store_socket_name, "", "The socket name of object store.");
 DEFINE_int32(object_manager_port, -1, "The port of object manager.");
 DEFINE_int32(node_manager_port, -1, "The port of node manager.");
-DEFINE_int32(metrics_agent_port, -1, "The port of metrics agent.");
 DEFINE_int32(metrics_export_port, 1, "Maximum startup concurrency");
 DEFINE_string(node_ip_address, "", "The ip address of this node.");
 DEFINE_string(redis_address, "", "The ip address of redis server.");
@@ -50,6 +49,7 @@ DEFINE_string(cpp_worker_command, "", "CPP worker command.");
 DEFINE_string(redis_password, "", "The password of redis.");
 DEFINE_string(temp_dir, "", "Temporary directory.");
 DEFINE_string(session_dir, "", "The path of this ray session directory.");
+DEFINE_string(log_dir, "", "The path of the dir where log files are created.");
 DEFINE_string(resource_dir, "", "The path of this ray resource directory.");
 DEFINE_int32(ray_debugger_external, 0, "Make Ray debugger externally accessible.");
 // store options
@@ -76,7 +76,6 @@ int main(int argc, char *argv[]) {
   const std::string store_socket_name = FLAGS_store_socket_name;
   const int object_manager_port = static_cast<int>(FLAGS_object_manager_port);
   const int node_manager_port = static_cast<int>(FLAGS_node_manager_port);
-  const int metrics_agent_port = static_cast<int>(FLAGS_metrics_agent_port);
   const std::string node_ip_address = FLAGS_node_ip_address;
   const std::string redis_address = FLAGS_redis_address;
   const int redis_port = static_cast<int>(FLAGS_redis_port);
@@ -95,6 +94,7 @@ int main(int argc, char *argv[]) {
   const std::string redis_password = FLAGS_redis_password;
   const std::string temp_dir = FLAGS_temp_dir;
   const std::string session_dir = FLAGS_session_dir;
+  const std::string log_dir = FLAGS_log_dir;
   const std::string resource_dir = FLAGS_resource_dir;
   const int ray_debugger_external = FLAGS_ray_debugger_external;
   const int64_t object_store_memory = FLAGS_object_store_memory;
@@ -171,8 +171,6 @@ int main(int argc, char *argv[]) {
         node_manager_config.min_worker_port = min_worker_port;
         node_manager_config.max_worker_port = max_worker_port;
         node_manager_config.worker_ports = worker_ports;
-        node_manager_config.pull_based_resource_reporting =
-            RayConfig::instance().pull_based_resource_reporting();
 
         if (!python_worker_command.empty()) {
           node_manager_config.worker_commands.emplace(
@@ -194,7 +192,7 @@ int main(int argc, char *argv[]) {
         if (!agent_command.empty()) {
           node_manager_config.agent_command = agent_command;
         } else {
-          RAY_LOG(DEBUG) << "Agent command is empty.";
+          RAY_LOG(DEBUG) << "Agent command is empty. Not starting agent.";
         }
 
         node_manager_config.report_resources_period_ms =
@@ -240,18 +238,18 @@ int main(int argc, char *argv[]) {
                        << object_manager_config.rpc_service_threads_number
                        << ", object_chunk_size = "
                        << object_manager_config.object_chunk_size;
-        // Initialize stats.
-        const ray::stats::TagsType global_tags = {
-            {ray::stats::ComponentKey, "raylet"},
-            {ray::stats::VersionKey, "2.0.0.dev0"},
-            {ray::stats::NodeAddressKey, node_ip_address}};
-        ray::stats::Init(global_tags, metrics_agent_port);
 
         // Initialize the node manager.
         raylet.reset(new ray::raylet::Raylet(
             main_service, raylet_socket_name, node_ip_address, redis_address, redis_port,
             redis_password, node_manager_config, object_manager_config, gcs_client,
             metrics_export_port));
+
+        // Initialize event framework.
+        if (RayConfig::instance().event_log_reporter_enabled() && !log_dir.empty()) {
+          ray::RayEventInit(ray::rpc::Event_SourceType::Event_SourceType_RAYLET,
+                            {{"node_id", raylet->GetNodeId().Hex()}}, log_dir);
+        };
 
         raylet->Start();
       }));
@@ -265,7 +263,6 @@ int main(int argc, char *argv[]) {
     RAY_LOG(INFO) << "Raylet received SIGTERM, shutting down...";
     raylet->Stop();
     gcs_client->Disconnect();
-    ray::stats::Shutdown();
     main_service.stop();
     remove(raylet_socket_name.c_str());
   };
