@@ -472,6 +472,8 @@ void CoreWorkerDirectTaskReceiver::HandleTask(
     }
   }
 
+  const auto &task_id = task_spec.TaskId();
+
   auto accept_callback = [this, reply, task_spec,
                           resource_ids](rpc::SendReplyCallback send_reply_callback) {
     if (task_spec.GetMessage().skip_execution()) {
@@ -547,8 +549,8 @@ void CoreWorkerDirectTaskReceiver::HandleTask(
     }
   };
 
-  auto reject_callback = [](rpc::SendReplyCallback send_reply_callback) {
-    RAY_LOG(INFO) << "Task " << task_spec.TaskId() << " was rejected.";
+  auto reject_callback = [task_id](rpc::SendReplyCallback send_reply_callback) {
+    RAY_LOG(INFO) << "Task " << task_id << " was rejected.";
     send_reply_callback(Status::Invalid("client cancelled stale rpc"), nullptr, nullptr);
   };
 

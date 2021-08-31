@@ -363,13 +363,31 @@ class InboundRequest {
         function_descriptor_(function_descriptor),
         has_pending_dependencies_(has_dependencies) {}
 
-  void Accept() { accept_callback_(std::move(send_reply_callback_)); }
-  void Cancel() { reject_callback_(std::move(send_reply_callback_)); }
+  void Accept() {
+    RAY_CHECK(request_process_type_ == RequestProcessType::UNPROCESSED)
+        << "Accept request has been already processed by "
+        << RequestProcessTypeToString(request_process_type_);
+    accept_callback_(std::move(send_reply_callback_));
+    request_process_type_ = RequestProcessType::ACCEPTED;
+  }
+
+  void Cancel() {
+    RAY_CHECK(request_process_type_ == RequestProcessType::UNPROCESSED)
+        << "Cancel request has been already processed by "
+        << RequestProcessTypeToString(request_process_type_);
+    reject_callback_(std::move(send_reply_callback_));
+    request_process_type_ = RequestProcessType::CANCELED;
+  }
+
   void Steal(rpc::StealTasksReply *reply) {
+    RAY_CHECK(request_process_type_ == RequestProcessType::UNPROCESSED)
+        << "Steal request has been already processed by "
+        << RequestProcessTypeToString(request_process_type_);
     reply->add_stolen_tasks_ids(task_id_.Binary());
     RAY_CHECK(TaskID::FromBinary(reply->stolen_tasks_ids(reply->stolen_tasks_ids_size() -
                                                          1)) == task_id_);
     steal_callback_(std::move(send_reply_callback_));
+    request_process_type_ = RequestProcessType::STOLEN;
   }
 
   bool CanExecute() const { return !has_pending_dependencies_; }
@@ -381,6 +399,21 @@ class InboundRequest {
   void MarkDependenciesSatisfied() { has_pending_dependencies_ = false; }
 
  private:
+  enum class RequestProcessType { UNPROCESSED, ACCEPTED, CANCELED, STOLEN };
+
+  std::string RequestProcessTypeToString(RequestProcessType type) {
+    switch (type) {
+    case RequestProcessType::ACCEPTED:
+      return "Accepted";
+    case RequestProcessType::CANCELED:
+      return "cancelled";
+    case RequestProcessType::STOLEN:
+      return "stolen";
+    default:
+      return "unprocessed";
+    }
+  }
+
   std::function<void(rpc::SendReplyCallback)> accept_callback_;
   std::function<void(rpc::SendReplyCallback)> reject_callback_;
   std::function<void(rpc::SendReplyCallback)> steal_callback_;
@@ -390,6 +423,7 @@ class InboundRequest {
   std::string concurrency_group_name_;
   ray::FunctionDescriptor function_descriptor_;
   bool has_pending_dependencies_;
+  RequestProcessType request_process_type_ = RequestProcessType::UNPROCESSED;
 };
 
 /// Waits for an object dependency to become available. Abstract for testing.
