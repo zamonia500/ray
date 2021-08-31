@@ -530,6 +530,7 @@ void CoreWorkerDirectTaskReceiver::HandleTask(
         RAY_CHECK_OK(task_done_());
       }
     }
+    RAY_LOG(INFO) << "Task " << task_spec.TaskId() << " was accepted.";
     if (status.ShouldExitWorker()) {
       // Don't allow the worker to be reused, even though the reply status is OK.
       // The worker will be shutting down shortly.
@@ -547,14 +548,15 @@ void CoreWorkerDirectTaskReceiver::HandleTask(
   };
 
   auto reject_callback = [](rpc::SendReplyCallback send_reply_callback) {
+    RAY_LOG(INFO) << "Task " << task_spec.TaskId() << " was rejected.";
     send_reply_callback(Status::Invalid("client cancelled stale rpc"), nullptr, nullptr);
   };
 
   auto steal_callback = [this, task_spec,
                          reply](rpc::SendReplyCallback send_reply_callback) {
-    RAY_LOG(DEBUG) << "Task " << task_spec.TaskId() << " was stolen from "
-                   << worker_context_.GetWorkerID()
-                   << "'s non_actor_task_queue_! Setting reply->set_task_stolen(true)!";
+    RAY_LOG(INFO) << "Task " << task_spec.TaskId() << " was stolen from "
+                  << worker_context_.GetWorkerID()
+                  << "'s non_actor_task_queue_! Setting reply->set_task_stolen(true)!";
     reply->set_task_stolen(true);
     send_reply_callback(Status::OK(), nullptr, nullptr);
   };
