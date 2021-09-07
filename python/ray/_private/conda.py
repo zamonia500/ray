@@ -4,7 +4,11 @@ import subprocess
 import hashlib
 import json
 from typing import Optional, List, Union, Tuple
+
+from ray.workers.pluggable_runtime_env import get_hook_logger
 """Utilities for conda.  Adapted from https://github.com/mlflow/mlflow."""
+
+logger = logging.getLogger(__name__)
 
 # Name of environment variable indicating a path to a conda installation. Ray
 # will default to running "conda" if unset.
@@ -63,8 +67,7 @@ def _get_conda_env_name(conda_env_path: str) -> str:
 
 
 def get_or_create_conda_env(conda_env_path: str,
-                            base_dir: Optional[str] = None,
-                            logger: Optional[logging.Logger] = None) -> str:
+                            base_dir: Optional[str] = None) -> str:
     """
     Given a conda YAML, creates a conda environment containing the required
     dependencies if such a conda environment doesn't already exist. Returns the
@@ -80,8 +83,7 @@ def get_or_create_conda_env(conda_env_path: str,
             In either case, the return value should be valid to pass in to
             `conda activate`.
     """
-    if logger is None:
-        logger = logging.getLogger(__name__)
+    logger = get_hook_logger()
     conda_path = get_conda_bin_executable("conda")
     try:
         exec_cmd([conda_path, "--help"], throw_on_error=False)

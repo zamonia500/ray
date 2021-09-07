@@ -1,27 +1,29 @@
 import json
 import os
 from contextlib import contextmanager
-from pathlib import Path
-import pytest
-import subprocess
-import sys
-import tempfile
-import time
 from typing import List
-from unittest import mock, skipIf
+from ray.workers.setup_runtime_env import inject_dependencies
+import pytest
+import sys
+import unittest
+import tempfile
 import yaml
+import time
 
+import subprocess
+
+from pathlib import Path
+from unittest import mock
 import ray
+from ray._private.utils import get_conda_env_dir, get_conda_bin_executable
 from ray._private.runtime_env import RuntimeEnvDict
-from ray._private.runtime_env.conda import (
-    inject_dependencies,
+from ray.workers.setup_runtime_env import (
     _inject_ray_to_conda_site,
     _resolve_install_from_source_ray_dependencies,
     _current_py_version,
 )
 from ray._private.test_utils import (run_string_as_driver,
                                      run_string_as_driver_nonblocking)
-from ray._private.utils import get_conda_env_dir, get_conda_bin_executable
 
 if not os.environ.get("CI"):
     # This flags turns on the local development that link against current ray
@@ -191,6 +193,7 @@ def test_job_config_conda_env(conda_envs, shutdown_only):
 
 
 def test_get_conda_env_dir(tmp_path):
+    from pathlib import Path
     """
     Typical output of `conda env list`, for context:
 
@@ -471,7 +474,7 @@ def test_conda_input_filepath(use_working_dir, tmp_path):
     assert output_conda_dict == conda_dict
 
 
-@skipIf(sys.platform == "win32", "Fail to create temp dir.")
+@unittest.skipIf(sys.platform == "win32", "Fail to create temp dir.")
 def test_experimental_package(shutdown_only):
     ray.init(num_cpus=2)
     pkg = ray.experimental.load_package(
@@ -483,7 +486,7 @@ def test_experimental_package(shutdown_only):
     assert ray.get(pkg.my_func.remote()) == "hello world"
 
 
-@skipIf(sys.platform == "win32", "Fail to create temp dir.")
+@unittest.skipIf(sys.platform == "win32", "Fail to create temp dir.")
 def test_experimental_package_lazy(shutdown_only):
     pkg = ray.experimental.load_package(
         os.path.join(
@@ -495,7 +498,7 @@ def test_experimental_package_lazy(shutdown_only):
     assert ray.get(pkg.my_func.remote()) == "hello world"
 
 
-@skipIf(sys.platform == "win32", "Fail to create temp dir.")
+@unittest.skipIf(sys.platform == "win32", "Fail to create temp dir.")
 def test_experimental_package_github(shutdown_only):
     ray.init(num_cpus=2)
     pkg = ray.experimental.load_package(

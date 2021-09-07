@@ -12,7 +12,6 @@ import timeit
 import socket
 import math
 import traceback
-import logging
 from typing import Optional, Any, List, Dict
 from contextlib import redirect_stdout, redirect_stderr
 import yaml
@@ -23,7 +22,8 @@ import ray._private.utils
 import ray._private.gcs_utils as gcs_utils
 from ray.util.queue import Queue, _QueueActor, Empty
 from ray.scripts.scripts import main as ray_main
-from ray._private.runtime_env import RuntimeEnvContext
+from ray.workers.pluggable_runtime_env import (RuntimeEnvContext,
+                                               get_hook_logger)
 try:
     from prometheus_client.parser import text_string_to_metric_families
 except (ImportError, ModuleNotFoundError):
@@ -625,15 +625,13 @@ def set_setup_func():
     runtime_env.VAR = "hello world"
 
 
-def sleep_setup_runtime_env(runtime_env: dict,
-                            context: RuntimeEnvContext,
-                            logger=None):
-    logger = logging.getLogger(__name__)
+def sleep_setup_runtime_env(runtime_env: dict, session_dir):
+    logger = get_hook_logger()
     logger.info(f"Setting up runtime environment {runtime_env}")
     logger.info("Simulating long runtime env setup.  Sleeping for 15s...")
     time.sleep(15)
     logger.info("Finished sleeping for 15s")
-    return
+    return RuntimeEnvContext()
 
 
 class BatchQueue(Queue):
