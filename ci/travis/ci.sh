@@ -345,7 +345,6 @@ build_wheels() {
       )
 
       echo "Populating mount bazel cache with TRAVIS_COMMIT = ${TRAVIS_COMMIT}"
-      ls -alp "${HOME}/ray-bazel-cache"
 
       if [ -z "${BUILDKITE-}" ]; then
         echo "DEBUG: This is running on buildkite"
