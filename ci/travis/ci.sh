@@ -344,13 +344,17 @@ build_wheels() {
         -e "RAY_DEBUG_BUILD=${RAY_DEBUG_BUILD:-}"
       )
 
+      echo "Populating mount bazel cache with TRAVIS_COMMIT = ${TRAVIS_COMMIT}"
+      ls -alp "${HOME}/ray-bazel-cache"
 
       if [ -z "${BUILDKITE-}" ]; then
+        echo "DEBUG: This is running on buildkite"
         # This command should be kept in sync with ray/python/README-building-wheels.md,
         # except the "${MOUNT_BAZEL_CACHE[@]}" part.
         docker run --rm -w /ray -v "${PWD}":/ray "${MOUNT_BAZEL_CACHE[@]}" \
         quay.io/pypa/manylinux2014_x86_64 /ray/python/build-wheel-manylinux2014.sh
       else
+        echo "DEBUG: This is *not* running on buildkite"
         rm -rf /ray-mount/*
         cp -rT /ray /ray-mount
         ls /ray-mount
