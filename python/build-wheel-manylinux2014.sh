@@ -84,6 +84,7 @@ for ((i=0; i<${#PYTHONS[@]}; ++i)); do
     # Set the commit SHA in __init__.py.
     if [ -n "$TRAVIS_COMMIT" ]; then
       sed -i.bak "s/{{RAY_COMMIT_SHA}}/$TRAVIS_COMMIT/g" ray/__init__.py && rm ray/__init__.py.bak
+      echo "OVERWROTE RAY_COMMIT_SHA WITH TRAVIS_COMMIT = ${TRAVIS_COMMIT}"
     else
       echo "TRAVIS_COMMIT variable not set - required to populated ray.__commit__."
       exit 1
