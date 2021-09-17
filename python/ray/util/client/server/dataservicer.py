@@ -6,14 +6,14 @@ import grpc
 from queue import Queue
 import sys
 
-from typing import Any, Dict, Iterator, TYPE_CHECKING, Union
+from typing import Any, Dict, Iterator, Optional, TYPE_CHECKING, Union
 from threading import Lock, Thread
 import time
 
 import ray.core.generated.ray_client_pb2 as ray_client_pb2
 import ray.core.generated.ray_client_pb2_grpc as ray_client_pb2_grpc
 from ray.util.client.common import (CLIENT_SERVER_MAX_THREADS,
-                                    _propogate_error_in_context,
+                                    _propagate_error_in_context,
                                     OrderedResponseCache)
 from ray.util.client import CURRENT_PROTOCOL_VERSION
 from ray.util.debug import log_once
@@ -27,9 +27,9 @@ logger = logging.getLogger(__name__)
 QUEUE_JOIN_SECONDS = 10
 
 
-def _get_reconnecting_from_context(context: Any) -> bool:
+def _get_reconnecting_from_context(context: Any) -> Optional[bool]:
     """
-    Get `reconnecting` from gRPC metadata, or False if not present
+    Get `reconnecting` from gRPC metadata, or None if missing.
     """
     metadata = {k: v for k, v in context.invocation_metadata()}
     val = metadata.get("reconnecting")
@@ -85,10 +85,10 @@ class DataServicer(ray_client_pb2_grpc.RayletDataStreamerServicer):
         self.client_last_seen: Dict[str, float] = {}
         # dictionary mapping client_id's to their reconnect grace periods
         self.reconnect_grace_periods: Dict[str, float] = {}
-        # dictionary mapping client_id's to their replay cache
+        # dictionary mapping client_id's to their response cache
         self.response_caches: Dict[str, OrderedResponseCache] = defaultdict(
             OrderedResponseCache)
-        # stopped event, useful for signally that the server is shut down
+        # stopped event, useful for signals that the server is shut down
         self.stopped = threading.Event()
 
     def Datapath(self, request_iterator, context):
@@ -103,6 +103,8 @@ class DataServicer(ray_client_pb2_grpc.RayletDataStreamerServicer):
         logger.debug(f"New data connection from client {client_id}: ")
         accepted_connection = self._init(client_id, context, start_time)
         response_cache = self.response_caches[client_id]
+        # Set to False if client requests a reconnect grace period of 0
+        reconnect_enabled = True
         if not accepted_connection:
             return
         try:
@@ -124,7 +126,7 @@ class DataServicer(ray_client_pb2_grpc.RayletDataStreamerServicer):
                     continue
 
                 assert isinstance(req, ray_client_pb2.DataRequest)
-                if _should_cache(req):
+                if _should_cache(req) and reconnect_enabled:
                     cached_resp = response_cache.check_cache(req.req_id)
                     if isinstance(cached_resp, Exception):
                         # Cache state is invalid, raise exception
@@ -141,6 +143,9 @@ class DataServicer(ray_client_pb2_grpc.RayletDataStreamerServicer):
                     with self.clients_lock:
                         self.reconnect_grace_periods[client_id] = \
                             req.init.reconnect_grace_period
+                        if req.init.reconnect_grace_period == 0:
+                            reconnect_enabled = False
+
                 elif req_type == "get":
                     if req.get.asynchronous:
                         get_resp = self.basic_service._async_get_object(
@@ -188,12 +193,12 @@ class DataServicer(ray_client_pb2_grpc.RayletDataStreamerServicer):
                     raise Exception(f"Unreachable code: Request type "
                                     f"{req_type} not handled in Datapath")
                 resp.req_id = req.req_id
-                if _should_cache(req):
+                if _should_cache(req) and reconnect_enabled:
                     response_cache.update_cache(req.req_id, resp)
                 yield resp
         except Exception as e:
             logger.exception("Error in data channel:")
-            recoverable = _propogate_error_in_context(e, context)
+            recoverable = _propagate_error_in_context(e, context)
             invalid_cache = response_cache.invalidate(e)
             if not recoverable or invalid_cache:
                 context.set_code(grpc.StatusCode.FAILED_PRECONDITION)

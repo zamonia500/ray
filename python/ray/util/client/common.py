@@ -28,6 +28,14 @@ logger = logging.getLogger(__name__)
 INT32_MAX = (2**31) - 1
 
 # gRPC status codes that the client shouldn't attempt to recover from
+# Resource exhausted: Server is low on resources, or has hit the max number
+#   of client connections
+# Invalid argument: Reserved for application errors
+# Not found: Set if the client is attempting to reconnect to a session that
+#   does not exist
+# Failed precondition: Reserverd for application errors
+# Aborted: Set when an error is serialized into the details of the context,
+#   signals that error should be deserialized on the client side
 GRPC_UNRECOVERABLE_ERRORS = (grpc.StatusCode.RESOURCE_EXHAUSTED,
                              grpc.StatusCode.INVALID_ARGUMENT,
                              grpc.StatusCode.NOT_FOUND,
@@ -420,7 +428,7 @@ def _get_client_id_from_context(context: Any) -> str:
     return client_id
 
 
-def _propogate_error_in_context(e: Exception, context: Any) -> bool:
+def _propagate_error_in_context(e: Exception, context: Any) -> bool:
     """
     Encode an error into the context of an RPC response. Returns True
     if the error can be recovered from, false otherwise
@@ -629,7 +637,7 @@ class OrderedResponseCache:
         Returns True if the cache contains an error, False otherwise
         """
         with self.cv:
-            invalid = True
+            invalid = False
             for req_id in self.cache:
                 if self.cache[req_id] is None:
                     self.cache[req_id] = e
