@@ -59,7 +59,7 @@ async def submit_job(working_dir: str, entrypoint: str):
     job_id = actor._ray_actor_id.hex()
 
     job_handle = actor.run_background_job_2.remote(
-        entrypoint=entrypoint, working_dir=working_dir, self_handle=actor, 
+        entrypoint=entrypoint, working_dir=working_dir, self_handle=actor,
     )
 
     return {"job_id": job_id}
@@ -119,7 +119,8 @@ async def submit(yaml_config_path: str):
     job_id = actor._ray_actor_id.hex()
 
     job_handle = actor.run_background_job.remote(
-        command=command, self_handle=actor, config_path=config_path, pkg_uri=pkg_uri
+        command=command, self_handle=actor,
+        config_path=config_path, pkg_uri=pkg_uri
     )
 
     return {"job_id": job_id}

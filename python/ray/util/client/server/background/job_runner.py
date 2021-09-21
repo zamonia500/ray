@@ -28,7 +28,7 @@ class BackgroundJobRunner:
     3. Gracefully exit when the command is complete
     """
     def run_background_job_2(
-        self, entrypoint: str, working_dir: str, self_handle: Any, 
+        self, entrypoint: str, working_dir: str, self_handle: Any,
     ) -> None:
 
         namespace = ray.get_runtime_context().namespace
@@ -54,6 +54,8 @@ class BackgroundJobRunner:
                 ray_kv._internal_kv_put(
                         f"JOB:{job_id}", "RUNNING", overwrite=True)
                 _run_kill_child(entrypoint, shell=True, check=True, env=env, cwd=tmpdir)  # noqa
+                ray_kv._internal_kv_put(
+                        f"JOB:{job_id}", "SUCCEEDED", overwrite=True)
             except:
                 ray_kv._internal_kv_put(
                         f"JOB:{job_id}", "FAILED", overwrite=True)
@@ -62,8 +64,7 @@ class BackgroundJobRunner:
                 time.sleep(1)
 
                 self_handle.stop.remote()
-                ray_kv._internal_kv_put(
-                        f"JOB:{job_id}", "SUCCEEDED", overwrite=True)
+
 
     def run_background_job(
         self, command: str, self_handle: Any, config_path: str, pkg_uri: str
@@ -107,6 +108,8 @@ class BackgroundJobRunner:
             ray_kv._internal_kv_put(
                     f"JOB:{job_id}", "RUNNING", overwrite=True)
             _run_kill_child(command, shell=True, check=True, env=env)  # noqa
+            ray_kv._internal_kv_put(
+                    f"JOB:{job_id}", "SUCCEEDED", overwrite=True)
         except:
             ray_kv._internal_kv_put(
                     f"JOB:{job_id}", "FAILED", overwrite=True)
@@ -115,8 +118,6 @@ class BackgroundJobRunner:
             time.sleep(1)
 
             self_handle.stop.remote()
-            ray_kv._internal_kv_put(
-                    f"JOB:{job_id}", "SUCCEEDED", overwrite=True)
 
     def stop(self) -> None:
 
