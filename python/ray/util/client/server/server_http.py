@@ -46,8 +46,8 @@ async def read_root():
 
 
 
-@app.post("/submit_job")
-async def submit_job(job_spec: JobSpec):
+@app.get("/submit_job")
+async def submit_job(working_dir: str, entrypoint: str):
     actor_name = str(uuid.uuid4())
     namespace = f"bg_{str(uuid.uuid4())}"
 
@@ -58,8 +58,8 @@ async def submit_job(job_spec: JobSpec):
 
     job_id = actor._ray_actor_id.hex()
 
-    job_handle = actor.run_background_job.remote(
-        command=job_spec.entrypoint, self_handle=actor, 
+    job_handle = actor.run_background_job_2.remote(
+        entrypoint=entrypoint, working_dir=working_dir, self_handle=actor, 
     )
 
     return {"job_id": job_id}
