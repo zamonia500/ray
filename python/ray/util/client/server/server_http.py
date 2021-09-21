@@ -1,3 +1,4 @@
+from typing import Optional
 from ray.util.client.server.server import create_ray_handler
 import uvicorn
 from fastapi import FastAPI
@@ -14,12 +15,22 @@ from ray.experimental.packaging import load_package
 from ray._private.runtime_env import working_dir as working_dir_pkg
 import ray
 import ray.experimental.internal_kv as ray_kv
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
 TIMEOUT_FOR_SPECIFIC_SERVER_S = env_integer("TIMEOUT_FOR_SPECIFIC_SERVER_S",
                                             30)
 app = FastAPI()
+class JobSpec(BaseModel):
+    """
+    Query model used to filter Jobs.
+    """
+
+    entrypoint: str
+    working_dir: str
+    pip_packages: Optional[str]
+
 
 
 @app.get("/")
@@ -32,6 +43,27 @@ async def read_root():
     )
 
     return {"yoo": "success"}
+
+
+
+@app.post("/submit_job")
+async def submit_job(job_spec: JobSpec):
+    actor_name = str(uuid.uuid4())
+    namespace = f"bg_{str(uuid.uuid4())}"
+
+    actor = BackgroundJobRunner.options(
+        name=actor_name,
+        namespace=namespace,
+        lifetime="detached").remote()
+
+    job_id = actor._ray_actor_id.hex()
+
+    job_handle = actor.run_background_job.remote(
+        command=job_spec.entrypoint, self_handle=actor, 
+    )
+
+    return {"job_id": job_id}
+
 
 @app.get("/submit/{yaml_config_path}")
 async def submit(yaml_config_path: str):

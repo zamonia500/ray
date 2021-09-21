@@ -1,4 +1,5 @@
 import os
+import tempfile
 import re
 import subprocess
 import time
@@ -10,6 +11,8 @@ from zipfile import ZipFile
 from pathlib import Path
 import ray.experimental.internal_kv as ray_kv
 from urllib.parse import urlparse
+from git import Repo
+
 
 from ray.util.client.server.background.const import ANYSCALE_BACKGROUND_JOB_CONTEXT
 from ray.util.client.server.background.job_context import BackgroundJob, BackgroundJobContext
@@ -24,6 +27,44 @@ class BackgroundJobRunner:
     2. execute the command in a subprocess (and stream logs appropriately)
     3. Gracefully exit when the command is complete
     """
+    def run_background_job_2(
+        self, entrypoint: str, working_dir: str, self_handle: Any, 
+    ) -> None:
+
+        namespace = ray.get_runtime_context().namespace
+        # Update the context with the runtime env uris
+        uris = ray.get_runtime_context().runtime_env.get("uris") or []
+        context = BackgroundJobContext(namespace, uris)
+        env_vars = {
+            "PYTHONUNBUFFERED": "1",  # Make sure python subprocess streams logs https://docs.python.org/3/using/cmdline.html#cmdoption-u
+            "RAY_ADDRESS": "auto",  # Make sure that internal ray.init has an anyscale RAY_ADDRESS
+            ANYSCALE_BACKGROUND_JOB_CONTEXT: context.to_json(),
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+
+            env = {**os.environ, **env_vars}
+            Repo.clone_from(
+                working_dir,
+                tmpdir,
+                branch="master",
+            )
+
+            try:
+                job_id = self_handle._ray_actor_id.hex()
+                ray_kv._internal_kv_put(
+                        f"JOB:{job_id}", "RUNNING", overwrite=True)
+                _run_kill_child(entrypoint, shell=True, check=True, env=env, cwd=tmpdir)  # noqa
+            except:
+                ray_kv._internal_kv_put(
+                        f"JOB:{job_id}", "FAILED", overwrite=True)
+            finally:
+                # allow time for any logs to propogate before the task exits
+                time.sleep(1)
+
+                self_handle.stop.remote()
+                ray_kv._internal_kv_put(
+                        f"JOB:{job_id}", "SUCCEEDED", overwrite=True)
+
     def run_background_job(
         self, command: str, self_handle: Any, config_path: str, pkg_uri: str
     ) -> None:
