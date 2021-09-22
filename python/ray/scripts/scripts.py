@@ -13,6 +13,7 @@ import urllib
 import urllib.parse
 import yaml
 from socket import socket
+import requests
 
 import ray
 import psutil
@@ -1924,6 +1925,50 @@ def cpp(show_library_path, generate_bazel_project_template_to, log_style,
                 f"    cd {os.path.abspath(generate_bazel_project_template_to)}"
                 " && sh run.sh"))
 
+@cli.command()
+@click.option(
+    "--remote-working-dir",
+    required=True,
+    type=str,
+    help="Remote Github URL to working dir")
+@click.option(
+    "--entrypoint",
+    required=True,
+    type=str,
+    help="Entrypoint command to execute once working dir is setup.")
+@click.option(
+    "--http-server-endpoint",
+    required=True,
+    type=str,
+    help="Endpoint to send requests to")
+def submit_job(remote_working_dir, entrypoint, http_server_endpoint):
+    payload = {'working_dir': remote_working_dir, 'entrypoint': entrypoint}
+    endpoint = http_server_endpoint + "/submit_job"
+    response = requests.get(endpoint, params=payload)
+    rst = json.loads(response.content.decode()).get("job_id")
+
+    print(f"Submitted job id = {rst}")
+    return rst
+
+@cli.command()
+@click.option(
+    "--job-id",
+    required=True,
+    type=str,
+    help="")
+@click.option(
+    "--http-server-endpoint",
+    required=True,
+    type=str,
+    help="Endpoint to send requests to")
+def query_job(job_id, http_server_endpoint):
+    payload = {"job_id": job_id}
+    endpoint = http_server_endpoint + "/status"
+    response = requests.get(endpoint, params=payload)
+    rst = json.loads(response.content.decode()).get("Result")
+
+    print(f"Queried job status: {rst}")
+    return rst
 
 def add_command_alias(command, name, hidden):
     new_command = copy.deepcopy(command)
@@ -1958,6 +2003,7 @@ cli.add_command(global_gc)
 cli.add_command(timeline)
 cli.add_command(install_nightly)
 cli.add_command(cpp)
+cli.add_command(submit_job)
 
 try:
     from ray.serve.scripts import serve_cli

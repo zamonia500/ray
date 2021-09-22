@@ -39,7 +39,7 @@ async def read_root():
 
     actor = BackgroundJobRunner.options(namespace=namespace, lifetime="detached", name="_background_actor").remote()
     actor.run_background_job.remote(
-        command="sleep 1 && echo 'hello' && echo 'lmfao' > /tmp/test_file && sleep 100", self_handle=actor
+        command="sleep 1 && echo 'hello' && echo 'lmfao' > /tmp/test_file && sleep 10", self_handle=actor
     )
 
     return {"yoo": "success"}
@@ -126,7 +126,7 @@ async def submit(yaml_config_path: str):
     return {"job_id": job_id}
 
 
-@app.get("/status/{job_id}")
+@app.get("/status")
 async def status(job_id: str):
     try:
         # actor = ray.get_actor(name=actor_name, namespace=namespace)
