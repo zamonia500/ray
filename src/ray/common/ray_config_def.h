@@ -491,3 +491,5 @@ RAY_CONFIG(bool, scheduler_avoid_gpu_nodes, true)
 
 /// Whether to skip running local GC in runtime env.
 RAY_CONFIG(bool, runtime_env_skip_local_gc, false)
+
+RAY_CONFIG(bool, scheduler_old, false)

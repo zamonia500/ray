@@ -10,12 +10,20 @@ import ray._private.test_utils
 
 import ray
 
-logger = logging.getLogger(__name__)
+import pandas as pd
 
+logger = logging.getLogger(__name__)
 
 # This test compares the scheduling latency of Raylet-based scheduler and
 # GCS-based scheduler.
-@pytest.mark.parametrize("args", [[16, 16, 4, False], [16, 16, 4, True]])
+NUM_LOWER = 4
+NUM_ACTORS = 32
+
+
+@pytest.mark.parametrize("args",
+                         [[NUM_ACTORS, NUM_ACTORS, NUM_LOWER, False, False], [
+                             NUM_ACTORS, NUM_ACTORS, NUM_LOWER, False, True
+                         ], [NUM_ACTORS, NUM_ACTORS, NUM_LOWER, True, False]])
 def test_actor_scheduling_latency(ray_start_cluster, args):
     cluster = ray_start_cluster
 
@@ -27,12 +35,15 @@ def test_actor_scheduling_latency(ray_start_cluster, args):
     upper_count = args[2]
     # Whether to enable gcs-based scheduler.
     gcs_sched = args[3]
+    new_sched = args[4]
 
     for i in range(node_count):
         cluster.add_node(
             memory=1024**2,
-            _system_config={"gcs_actor_scheduling_enabled": gcs_sched}
-            if i == 0 else {})
+            _system_config={
+                "gcs_actor_scheduling_enabled": gcs_sched,
+                "scheduler_old": not new_sched
+            } if i == 0 else {})
     ray.init(address=cluster.address)
     cluster.wait_for_nodes()
 
@@ -97,7 +108,11 @@ def test_actor_scheduling_latency(ray_start_cluster, args):
     latency_list = []
     for i in range(actor_count):
         latency_list.append(end_list[i] - start_list[i])
-        print(latency_list[i])
+    print(
+        "GCS" if gcs_sched else "regular",
+        "new" if new_sched else "old",
+        pd.Series(latency_list).describe(
+            percentiles=[0.25, 0.5, 0.75, 0.9, 0.99]))
 
 
 if __name__ == "__main__":
