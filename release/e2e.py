@@ -1118,7 +1118,7 @@ def run_test_config(
 
     compute_tpl_rel_path = test_config["cluster"].get("compute_template", None)
     compute_tpl = _load_config(local_dir, compute_tpl_rel_path)
-    print(compute_tpl)
+    logger.info(f"compute template debug {compute_tpl}")
 
     stop_event = multiprocessing.Event()
     result_queue = multiprocessing.Queue()
