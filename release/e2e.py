@@ -268,7 +268,7 @@ REPORT_S = 30
 
 def maybe_fetch_api_token():
     if GLOBAL_CONFIG["ANYSCALE_CLI_TOKEN"] is None:
-        print("Missing ANYSCALE_CLI_TOKEN, retrieving from AWS secrets store")
+        print("Missing ANYSCALE_CLI_TOKEN, retrieving from AWS secrets store. NEW CHANGE DEBUG")
         # NOTE(simon) This should automatically retrieve
         # release-automation@anyscale.com's anyscale token
         GLOBAL_CONFIG["ANYSCALE_CLI_TOKEN"] = boto3.client(
