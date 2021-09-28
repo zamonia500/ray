@@ -596,6 +596,7 @@ def create_or_find_compute_template(
         # As of Anyscale 0.4.1, it is an error to use the same compute template
         # name within the same organization, between different projects.
         compute_tpl_name = f"{project_id}/compute/{_dict_hash(compute_tpl)}"
+        logger.info(f"compaute_tpl is {compute_tpl}")
 
         logger.info(f"Tests uses compute template "
                     f"with name {compute_tpl_name}. Looking up existing "
