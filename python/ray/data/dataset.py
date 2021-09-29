@@ -1010,6 +1010,7 @@ class Dataset(Generic[T]):
             dataset_uuid=self._uuid,
             filesystem=filesystem,
             **arrow_parquet_args)
+        return self
 
     def write_json(self,
                    path: str,
@@ -1044,6 +1045,7 @@ class Dataset(Generic[T]):
             dataset_uuid=self._uuid,
             filesystem=filesystem,
             **pandas_json_args)
+        return self
 
     def write_csv(self,
                   path: str,
@@ -1075,6 +1077,7 @@ class Dataset(Generic[T]):
             dataset_uuid=self._uuid,
             filesystem=filesystem,
             **arrow_csv_args)
+        return self
 
     def write_numpy(
             self,
@@ -1109,6 +1112,7 @@ class Dataset(Generic[T]):
             dataset_uuid=self._uuid,
             column=column,
             filesystem=filesystem)
+        return self
 
     def write_datasource(self, datasource: Datasource[T],
                          **write_args) -> None:
@@ -1136,6 +1140,7 @@ class Dataset(Generic[T]):
             raise
         finally:
             progress.close()
+        return self
 
     def iter_rows(self, *, prefetch_blocks: int = 0) -> Iterator[T]:
         """Return a local row iterator over the dataset.

@@ -21,9 +21,7 @@ PER_DATASET_OPS = [
 ]
 
 # Similar to above but we should force evaluation immediately.
-PER_DATASET_OUTPUT_OPS = [
-    "write_json", "write_csv", "write_parquet", "write_datasource"
-]
+PER_DATASET_OUTPUT_OPS = ["write_json", "write_parquet", "write_datasource"]
 
 # Operations that operate over the stream of output batches from the pipeline.
 OUTPUT_ITER_OPS = ["take", "show", "iter_rows", "to_tf", "to_torch"]
